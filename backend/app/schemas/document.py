@@ -2,9 +2,10 @@ from pydantic import BaseModel
 
 
 class DocumentCreate(BaseModel):
-    name :str
-    content:str
-    source:str
+    name: str
+    content: str
+    source: str
+
 
 class DocumentUpdate(BaseModel):
     name: str
@@ -13,7 +14,7 @@ class DocumentUpdate(BaseModel):
 
 
 class DocumentOut(BaseModel):
-    id : int
-    name :str
-    content:str
-    source:str
+    id: int
+    name: str
+    content: str | None
+    source: str
