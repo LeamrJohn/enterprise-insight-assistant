@@ -382,6 +382,8 @@ Documents.content允许NULL
   修复、回归测试和学习记录；提交后工作区干净。
 - 第2课提交：`1c07722 test: define document not-found response contract`，固定404状态、
   响应内容和请求追踪ID。
+- 第3课提交：`4cdcaf5 test: define missing-field validation contract`，固定缺少必填字段
+  时的422、错误类型、字段位置和Request ID。
 
 ### 掌握验证
 
@@ -530,3 +532,87 @@ Repository使用first()查询
 - 已经掌握：422发生位置、稳定错误字段、集成测试和字段位置迁移。
 - 仍不理解：阶段1还需要学习“字符串存在但为空”的边界校验。
 - 下一步补强：提交本课，再验证空字符串是否会绕过当前Schema。
+
+## 2026-07-05 至 2026-07-06：阶段1 / 第4课 / 空字符串边界
+
+### 本课目标
+
+- 区分缺少字段、空字符串和只包含空格的字符串。
+- 证明普通`str`类型不会自动拒绝空字符串。
+- 在请求信任边界增加最小有效内容约束。
+
+### 阅读与修改
+
+- 阅读文件：`backend/app/schemas/document.py`、
+  `backend/tests/integration/test_documents.py`
+- 修改文件：`backend/app/schemas/document.py`、
+  `backend/tests/integration/test_documents.py`
+- 独立编写内容：创建和更新接口的空白内容参数化测试、共享`NonBlankStr`约束、
+  更新失败后的数据库内容保持断言。
+- 使用的提示级别：问题说明、约束语法提示、测试审查。
+- 第几次尝试通过：创建测试先正确失败；更新测试先出现1次收集错误，修正后正确
+  失败；加入共享约束后通过。
+- 对应Commit Hash：进行中。
+
+### 数据流复述
+
+```text
+content键存在
+→ DocumentCreate或DocumentUpdate执行NonBlankStr校验
+→ 先去除首尾空格
+→ 去除后长度小于1则返回422
+→ 路由函数、Service和Repository均不执行
+→ 数据库不新增文档，也不修改已有文档
+```
+
+### 上下文检查
+
+不适用：本课处理普通API输入边界。
+
+### 验证证据
+
+- 当前`DocumentCreate.content`仅声明为`str`。
+- Python中的`""`仍然是字符串，因此当前类型检查预计会接受。
+- 预测验证：学习者能判断当前接口预计返回200，但业务规则应该拒绝空内容。
+- 失败测试：`test_create_document_rejects_empty_content`期望422，实际得到200，
+  pytest显示`assert 200 == 422`，退出码为`1`。
+- 结论：测试已经证明当前`DocumentCreate`错误接受空字符串并执行后续保存。
+- 参数化验证：同一测试分别使用`""`和`"   "`，两个用例均实际返回200并失败，
+  结果为`2 failed, 2 deselected`。
+- 当前环境验证：Pydantic 2.13.4的`StringConstraints(strip_whitespace=True,
+  min_length=1)`接受普通文本，并以`string_too_short`拒绝空字符串和纯空格字符串。
+- 约束理解：`"  hello  "`会规范化为`"hello"`；创建和更新输入都应拒绝空白内容。
+- 输出边界：`DocumentOut.content`不应用非空输入约束，因为待处理上传记录允许None，
+  且输出层不应为了通过响应校验而改写数据库已有值。
+- 更新测试第1次：pytest在收集阶段报错`function uses no argument 'content'`；装饰器
+  声明了`content`参数，但测试函数签名没有接收，且PUT仍使用固定空字符串。
+- 测试审查还发现：不应在获得422实际响应前猜测Pydantic错误类型；更新后的内容应
+  通过JSON字段比较，不应直接比较HTTP响应的原始字节`response.content`。
+- 最小修复：`DocumentCreate.content`和`DocumentUpdate.content`共享
+  `NonBlankStr`；`DocumentOut.content`继续使用`str | None`。
+- 绿色验证：创建和更新接口的4个空白内容用例全部通过，结果为
+  `4 passed, 2 deselected`。
+- 错误契约验证：空白内容返回422，错误类型为`string_too_short`，字段位置为
+  `["body", "content"]`，并包含`X-Request-ID`。
+- 状态一致性验证：非法更新后重新查询文档，原始`content`保持不变。
+- 全量回归：`9 passed in 0.71s`。
+- 静态检查：`ruff check backend\app backend\tests`返回`All checks passed!`。
+- 差异检查：`git diff --check`退出码为0；CRLF信息是Windows换行符提示，不是
+  校验失败。
+
+### 掌握验证
+
+| 验证项 | 结果 | 证据 |
+|---|---|---|
+| 不看答案解释 | 通过 | 能解释先去除空格，再用最小长度拒绝空白内容 |
+| 独立实现同类功能 | 通过 | 为创建和更新接口编写参数化测试并完成约束 |
+| 独立定位故障 | 通过 | 用失败测试证明空字符串绕过当前Schema |
+| 独立迁移到相似场景并测试 | 通过 | 将创建规则迁移到更新接口，并验证原数据不变 |
+
+### 当前结论
+
+- 掌握状态：已掌握
+- 已经掌握：普通`str`与业务有效字符串的区别、Pydantic字符串约束、参数化测试、
+  422错误结构、请求校验失败后的状态一致性。
+- 仍不理解：本课暂无未解决问题。
+- 下一步补强：提交本课变更，再按阶段1计划进入下一课。
