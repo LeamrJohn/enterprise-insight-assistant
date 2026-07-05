@@ -380,6 +380,8 @@ Documents.content允许NULL
   测试与Ruff格式化职责。
 - 本课提交：`5ef008b fix: allow document responses without content`，包含Schema最小
   修复、回归测试和学习记录；提交后工作区干净。
+- 第2课提交：`1c07722 test: define document not-found response contract`，固定404状态、
+  响应内容和请求追踪ID。
 
 ### 掌握验证
 
@@ -460,3 +462,71 @@ Repository使用first()查询
 - 已经掌握：404错误链路、HTTP边界，以及状态码、响应体和追踪ID测试。
 - 仍不理解：阶段1还需要学习Pydantic请求校验产生的422响应。
 - 下一步补强：提交本课测试，再观察非法请求如何在进入API函数前被拒绝。
+
+## 2026-07-05：阶段1 / 第3课 / Pydantic请求校验与422
+
+### 本课目标
+
+- 理解请求Schema是进入API函数前的信任边界。
+- 区分合法JSON与符合业务字段契约的JSON。
+- 使用集成测试观察缺少必填字段时的422响应。
+
+### 阅读与修改
+
+- 阅读文件：`backend/app/schemas/document.py`、`backend/app/api/document.py`
+- 修改文件：尚未修改。
+- 独立编写内容：尚未开始。
+- 使用的提示级别：概念说明。
+- 第几次尝试通过：进行中。
+- 对应Commit Hash：进行中。
+
+### 数据流复述
+
+```text
+合法JSON请求
+→ FastAPI构造DocumentCreate
+→ 缺少content导致Pydantic校验失败
+→ 返回422
+→ API函数、Service、Repository均不执行
+→ 数据库不新增记录
+```
+
+### 上下文检查
+
+不适用：本课处理普通HTTP输入校验。
+
+### 验证证据
+
+- `DocumentCreate`要求`name`、`content`和`source`都是字符串。
+- FastAPI在调用`create_document()`之前使用`DocumentCreate`校验请求体。
+- 理解验证：学习者能判断缺少`content`返回422，后续函数和数据库写入不会发生。
+- 术语修正：请求是合法JSON，但不符合Schema，不应称为JSON格式错误。
+- 观察测试：缺少`content`时响应`detail[0]`包含`type="missing"`、
+  `loc=["body", "content"]`、`msg="Field required"`和原始输入。
+- 当前测试已断言422和`X-Request-ID`，临时`print()`仅用于观察，最终测试应删除。
+- `loc`术语：location路径`["body", "content"]`表示错误位于请求体的`content`字段。
+- 测试整理第1次：误将422和Request ID断言注释，导致测试只检查detail；注释代码
+  不是删除，也不应为了增加新断言而移除原有必要契约。
+- 最终测试结构：同时验证422、`X-Request-ID`、错误类型`missing`和错误位置
+  `["body", "content"]`，临时打印与注释已删除。
+- 最终验证：完整测试`5 passed in 0.37s`，Ruff检查通过，两个退出码均为`0`。
+- 完整错误JSON判断修正：测试不锁死`msg`和`input`，因为文字可能随Pydantic版本
+  变化，原始输入也可能包含敏感或与目标无关的数据。
+- 迁移验证：能判断缺少`source`时`type`仍为`missing`但位置变为
+  `["body", "source"]`；缺少`name`时位置为`["body", "name"]`。
+
+### 掌握验证
+
+| 验证项 | 结果 | 证据 |
+|---|---|---|
+| 不看答案解释 | 通过 | 能复述Schema校验失败后停止后续调用 |
+| 独立实现同类功能 | 通过 | 新增缺少必填字段的422集成测试 |
+| 独立定位故障 | 通过 | 根据detail定位请求体content字段缺失 |
+| 独立迁移到相似场景并测试 | 通过 | 能将type与loc规则迁移到source和name字段 |
+
+### 当前结论
+
+- 掌握状态：已掌握
+- 已经掌握：422发生位置、稳定错误字段、集成测试和字段位置迁移。
+- 仍不理解：阶段1还需要学习“字符串存在但为空”的边界校验。
+- 下一步补强：提交本课，再验证空字符串是否会绕过当前Schema。

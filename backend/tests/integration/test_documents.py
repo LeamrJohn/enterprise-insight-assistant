@@ -39,3 +39,20 @@ def test_document_lifecycle(
     assert missing_response.status_code == 404
     assert missing_response.headers["X-Request-ID"]
     assert missing_response.json() == {"detail": "document not found"}
+
+
+def test_create_document_rejects_missing_content(client: TestClient) -> None:
+    response = client.post(
+        "/documents",
+        json={
+            "name": "pytest-document",
+            "source": "pytest",
+        },
+    )
+    assert response.status_code == 422
+    assert response.headers["X-Request-ID"]
+
+    detail = response.json()["detail"]
+
+    assert detail[0]["type"] == "missing"
+    assert detail[0]["loc"] == ["body", "content"]
