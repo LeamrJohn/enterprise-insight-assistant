@@ -24,7 +24,7 @@
 | 阶段 | 主题 | 状态 | 最近验证 | 主要遗留问题 |
 |---|---|---|---|---|
 | 0 | 工程基线、Git和现有调用链 | 已掌握 | 2026-07-05：独立识别ModuleNotFoundError | - |
-| 1 | HTTP契约、Schema和异常 | 未开始 | - | - |
+| 1 | HTTP契约、Schema和异常 | 学习中 | 2026-07-05：开始分析DocumentOut契约 | content可空冲突待修复 |
 | 2 | 用户身份、资源归属和最小RBAC | 未开始 | - | - |
 | 3 | 文件上传闭环 | 未开始 | - | - |
 | 4 | 文档解析、分块和生命周期 | 未开始 | - | - |
@@ -313,3 +313,84 @@ Schema与ORM边界：
   Schema与ORM边界、Git忽略/暂存/提交/分支和基础故障分类。
 - 仍不理解：阶段1将学习API契约、响应校验和统一异常处理。
 - 下一步补强：在`feature/api-contracts`进入阶段1。
+
+## 2026-07-05：阶段1 / 第1课 / DocumentOut响应契约
+
+### 本课目标
+
+- 理解数据库可空字段与API输出类型必须一致。
+- 区分创建请求契约与查询响应契约。
+- 先建立失败验证，再做最小修复。
+
+### 阅读与修改
+
+- 阅读文件：`backend/app/schemas/document.py`、`backend/app/models/documents.py`
+- 修改文件：尚未修改应用代码。
+- 独立编写内容：尚未开始。
+- 使用的提示级别：接口与问题说明。
+- 第几次尝试通过：进行中。
+- 对应Commit Hash：进行中。
+
+### 数据流复述
+
+```text
+Documents.content允许NULL
+→ Service可能返回content=None
+→ FastAPI使用DocumentOut校验响应
+→ DocumentOut.content只允许str
+→ 响应校验失败
+```
+
+### 上下文检查
+
+不适用：本课处理普通API契约，尚未涉及Agent上下文。
+
+### 验证证据
+
+- 当前ORM：`Documents.content`类型为`str | None`，数据库列`nullable=True`。
+- 当前响应Schema：`DocumentOut.content`类型为`str`。
+- 预期：先新增一个能稳定重现冲突的Schema测试。
+- 最小修改判断：学习者正确选择只将`DocumentOut.content`改为`str | None`。
+- 语义修正：`Documents`是所有文档共用的数据库模型；`DocumentOut`是当前通用查询
+  响应，不只表示解析完成状态。
+- 空值区别：`None`表示尚无内容，空字符串`""`表示存在字符串但长度为零，两者不同。
+- 失败测试第1次：pytest退出码`4`并提示找不到
+  `backend/tests/test_document_schema.py`。
+- 根因1：实际文件名误写为`tets_document_schema.py`，不符合pytest默认的
+  `test_*.py`发现规则。
+- 根因2：测试数据写成字符串`"None."`而不是Python值`None`，即使运行也不会触发
+  当前Schema冲突。
+- 失败测试第2次：重命名后pytest找到并通过1个测试，但检查文件发现测试仍传入
+  `"None."`并断言字符串相等，因此这是未覆盖目标问题的“错误通过”。
+- 失败测试第3次：测试真正传入Python的`None`后，pytest找到1个测试并按预期失败，
+  Pydantic报告`DocumentOut`存在1项字符串类型校验错误，退出码为`1`。
+- 结论：测试已稳定证明`DocumentOut.content: str`与数据库可空字段不一致。
+- 最小修复：只将`DocumentOut.content`改为接受`str | None`，未修改创建/更新Schema、
+  ORM、Service或Repository。
+- 修复后单项测试：`1 passed in 0.07s`。
+- 完整回归测试：`4 passed in 0.29s`。
+- Ruff检查：`All checks passed!`。
+- 测试整理后回归：`4 passed in 0.29s`，Ruff lint仍通过。
+- 格式复查：`ruff format --check`指出Schema和新测试共2个文件需要格式化，说明
+  `ruff check`通过不等于代码排版已经规范。
+- 格式化后验证：完整测试`4 passed`、Ruff lint通过、两个目标文件均已格式化。
+- 理解验证结果：能说明手工创建文档时内容必须提供；尚未掌握`str | None`是“字符串
+  或None”的联合类型，并混淆了pytest行为测试与Ruff格式检查的职责。
+- 补强后复述通过：能确认`str | None`同时接受字符串和None，并能区分pytest行为
+  测试与Ruff格式化职责。
+
+### 掌握验证
+
+| 验证项 | 结果 | 证据 |
+|---|---|---|
+| 不看答案解释 | 通过 | 能判断创建输入必填、数据库和输出允许None |
+| 独立实现同类功能 | 通过 | 完成最小类型修改并保持其他契约不变 |
+| 独立定位故障 | 通过 | 根据ValidationError确认响应Schema拒绝None |
+| 独立迁移到相似场景并测试 | 未通过 | 尚未进行 |
+
+### 当前结论
+
+- 掌握状态：学习中
+- 已经掌握：使用失败测试证明契约冲突，完成最小修复、回归测试和格式检查。
+- 仍不理解：阶段1的迁移验证和统一异常契约尚未完成。
+- 下一步补强：提交当前独立修复，再进入HTTP错误响应。
