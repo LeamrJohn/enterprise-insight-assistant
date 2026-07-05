@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 
 def test_document_lifecycle(
@@ -56,3 +57,61 @@ def test_create_document_rejects_missing_content(client: TestClient) -> None:
 
     assert detail[0]["type"] == "missing"
     assert detail[0]["loc"] == ["body", "content"]
+
+
+@pytest.mark.parametrize("content", ["", "   "])
+def test_create_document_rejects_blank_content(
+    client: TestClient, content: str
+) -> None:
+    response = client.post(
+        "/documents",
+        json={
+            "name": "pytest-document",
+            "content": content,
+            "source": "pytest",
+        },
+    )
+    assert response.status_code == 422
+    assert response.headers["X-Request-ID"]
+
+    detail = response.json()["detail"]
+
+    assert detail[0]["type"] == "string_too_short"
+    assert detail[0]["loc"] == ["body", "content"]
+
+
+@pytest.mark.parametrize("content", ["", "   "])
+def test_update_document_rejects_blank_content(
+    client: TestClient, content: str
+) -> None:
+    create_response = client.post(
+        "/documents",
+        json={
+            "name": "pytest-document",
+            "content": "Stored in the PostgreSQL test database.",
+            "source": "pytest",
+        },
+    )
+    assert create_response.status_code == 200
+    created = create_response.json()
+    document_id = created["id"]
+
+    update_response = client.put(
+        f"/documents/{document_id}",
+        json={
+            "name": "pytest-document-updated",
+            "content": content,
+            "source": "pytest",
+        },
+    )
+
+    assert update_response.status_code == 422
+    assert update_response.headers["X-Request-ID"]
+
+    detail = update_response.json()["detail"]
+    assert detail[0]["type"] == "string_too_short"
+    assert detail[0]["loc"] == ["body", "content"]
+
+    get_response = client.get(f"/documents/{document_id}")
+    assert get_response.status_code == 200
+    assert get_response.json()["content"] == created["content"]
