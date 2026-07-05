@@ -37,3 +37,5 @@ def test_document_lifecycle(
 
     missing_response = client.get(f"/documents/{document_id}")
     assert missing_response.status_code == 404
+    assert missing_response.headers["X-Request-ID"]
+    assert missing_response.json() == {"detail": "document not found"}
