@@ -378,6 +378,8 @@ Documents.content允许NULL
   或None”的联合类型，并混淆了pytest行为测试与Ruff格式检查的职责。
 - 补强后复述通过：能确认`str | None`同时接受字符串和None，并能区分pytest行为
   测试与Ruff格式化职责。
+- 本课提交：`5ef008b fix: allow document responses without content`，包含Schema最小
+  修复、回归测试和学习记录；提交后工作区干净。
 
 ### 掌握验证
 
@@ -394,3 +396,67 @@ Documents.content允许NULL
 - 已经掌握：使用失败测试证明契约冲突，完成最小修复、回归测试和格式检查。
 - 仍不理解：阶段1的迁移验证和统一异常契约尚未完成。
 - 下一步补强：提交当前独立修复，再进入HTTP错误响应。
+
+## 2026-07-05：阶段1 / 第2课 / 404错误链路
+
+### 本课目标
+
+- 区分“资源不存在”与“服务器异常”。
+- 跟踪Repository返回None后如何转换为HTTP 404。
+- 观察FastAPI当前错误响应，不提前建立复杂异常框架。
+
+### 阅读与修改
+
+- 阅读文件：`backend/app/api/document.py`、`backend/app/services/document_service.py`、
+  `backend/app/repositories/document_repository.py`、
+  `backend/tests/integration/test_documents.py`
+- 修改文件：尚未修改应用代码。
+- 独立编写内容：尚未开始。
+- 使用的提示级别：问题说明。
+- 第几次尝试通过：进行中。
+- 对应Commit Hash：进行中。
+
+### 数据流复述
+
+```text
+Repository使用first()查询
+→ 没有记录时返回None
+→ Service保持返回None
+→ API判断record is None
+→ 抛出HTTPException 404
+→ FastAPI生成404响应
+```
+
+### 上下文检查
+
+不适用：本课处理普通HTTP错误契约。
+
+### 验证证据
+
+- 现有集成测试删除文档后再次查询，并断言HTTP状态码为404。
+- 当前API使用`HTTPException(status_code=404, detail="document not found")`。
+- 理解验证：学习者能说明资源不存在应返回404，500用于预期外服务器故障。
+- 术语修正：必须明确说`None`，不能把`None`、空字符串和空列表统称为“空”。
+- 集成测试第1次：目标测试、完整测试和Ruff均通过，但diff检查发现只新增了
+  `X-Request-ID`断言，遗漏`{"detail": "document not found"}`响应体断言。
+- 教训：测试通过只说明现有断言成立，不能证明需求中的所有检查都已编写。
+- 集成测试第2次：补齐404响应JSON后，目标测试`1 passed`、完整测试`4 passed`、
+  Ruff通过；最终同时验证状态码、错误内容和`X-Request-ID`。
+- 最终复述通过：API负责把`None`转换为HTTP 404；Service不依赖HTTP，便于被API、
+  Worker或工作流复用；Request ID用于将用户失败请求关联到具体日志。
+
+### 掌握验证
+
+| 验证项 | 结果 | 证据 |
+|---|---|---|
+| 不看答案解释 | 通过 | 能复述None到HTTP 404的转换和404/500区别 |
+| 独立实现同类功能 | 通过 | 扩展现有集成测试验证错误响应契约 |
+| 独立定位故障 | 通过 | 通过diff发现绿色测试遗漏响应体断言并补齐 |
+| 独立迁移到相似场景并测试 | 通过 | 复用健康检查中的Request ID断言到404响应 |
+
+### 当前结论
+
+- 掌握状态：已掌握
+- 已经掌握：404错误链路、HTTP边界，以及状态码、响应体和追踪ID测试。
+- 仍不理解：阶段1还需要学习Pydantic请求校验产生的422响应。
+- 下一步补强：提交本课测试，再观察非法请求如何在进入API函数前被拒绝。
