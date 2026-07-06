@@ -24,7 +24,7 @@
 | 阶段 | 主题 | 状态 | 最近验证 | 主要遗留问题 |
 |---|---|---|---|---|
 | 0 | 工程基线、Git和现有调用链 | 已掌握 | 2026-07-05：独立识别ModuleNotFoundError | - |
-| 1 | HTTP契约、Schema和异常 | 学习中 | 2026-07-05：开始分析DocumentOut契约 | content可空冲突待修复 |
+| 1 | HTTP契约、Schema和异常 | 学习中 | 2026-07-06：安全500响应通过10项回归 | 错误结构尚未统一 |
 | 2 | 用户身份、资源归属和最小RBAC | 未开始 | - | - |
 | 3 | 文件上传闭环 | 未开始 | - | - |
 | 4 | 文档解析、分块和生命周期 | 未开始 | - | - |
@@ -616,3 +616,78 @@ content键存在
   422错误结构、请求校验失败后的状态一致性。
 - 仍不理解：本课暂无未解决问题。
 - 下一步补强：提交本课变更，再按阶段1计划进入下一课。
+
+## 2026-07-06：阶段1 / 第5课 / 未知异常的安全500响应
+
+### 本课目标
+
+- 理解中间件、全局异常处理器和业务分层的职责边界。
+- 验证未知异常不会向客户端暴露内部信息。
+- 让500响应携带可用于日志定位的Request ID。
+
+### 阅读与修改
+
+- 阅读文件：`backend/app/core/middleware.py`、`backend/app/core/exceptions.py`、
+  `backend/app/main.py`、`backend/tests/conftest.py`
+- 修改文件：`backend/app/core/middleware.py`、`backend/app/core/exceptions.py`、
+  `backend/app/main.py`、`backend/tests/integration/test_errors.py`
+- 独立编写内容：最初尝试编写故障注入测试；在语法示范后完成测试、Request ID
+  请求状态和全局异常处理器。
+- 使用的提示级别：职责提问、完整测试语法示范、处理器语法示范、逐行纠错。
+- 第几次尝试通过：初始测试结构错误；修正后稳定失败于缺少`X-Request-ID`；
+  注册全局异常处理器后通过。
+- 对应Commit Hash：进行中。
+
+### 数据流复述
+
+```text
+客户端请求
+→ 中间件生成Request ID并保存到request.state
+→ API调用Service
+→ 故障注入使Service抛出未处理RuntimeError
+→ 中间件记录完整异常并重新抛出
+→ 全局异常处理器读取Request ID
+→ 客户端收到安全JSON 500和X-Request-ID
+```
+
+### 上下文检查
+
+不适用：本课处理HTTP请求上下文，不是Agent对话上下文。
+
+### 验证证据
+
+- `TestClient`理解：默认`raise_server_exceptions=True`让pytest看到真实异常和
+  Traceback；本课局部使用`False`检查真实客户端会收到的500响应。
+- 故障注入：使用`monkeypatch`临时替换路由模块实际调用的
+  `get_document_service`，测试结束后自动恢复，不破坏测试数据库。
+- 红色验证：状态码500断言通过，但`response.headers.get("X-Request-ID")`
+  返回`None`；响应类型为`text/plain`，证明默认500缺少追踪ID和JSON契约。
+- 根因定位：中间件只在`else`成功分支添加响应头；异常分支记录日志后执行
+  `raise`，因此不会执行该分支。
+- 最小修复：中间件将Request ID保存到`request.state`；全局异常处理器返回
+  `{"detail": "internal server error"}`和相同`X-Request-ID`。
+- 安全验证：响应不包含故障注入文本`sensitive internal detail`。
+- 第一轮目标测试：`1 passed in 0.09s`。
+- 迁移验证：增加客户端传入`X-Request-ID`的未知异常测试，证明500响应保留并
+  原样返回该ID；目标测试结果为`2 passed in 0.18s`。
+- 全量回归：`11 passed in 0.98s`。
+- 静态检查：`ruff check backend\app backend\tests`返回`All checks passed!`。
+- 差异检查：`git diff --check`退出码为0。
+
+### 掌握验证
+
+| 验证项 | 结果 | 证据 |
+|---|---|---|
+| 不看答案解释 | 通过 | 能正确复述中间件和全局异常处理器职责 |
+| 独立实现同类功能 | 待补强 | 测试和处理器需要完整语法示范 |
+| 独立定位故障 | 通过 | 能解释异常分支执行`raise`后跳过`else` |
+| 独立迁移到相似场景并测试 | 待补强 | 行为验证通过，但变量和字符串语法需要纠正 |
+
+### 当前结论
+
+- 掌握状态：待补强
+- 已经掌握：未处理异常与HTTP错误的区别、中间件调用链、安全500响应和Request ID
+  的作用，以及传入Request ID应在响应中保持一致。
+- 仍不理解：独立编写`monkeypatch`故障注入测试、异常处理器和Python变量语法仍需
+  练习。
+- 下一步补强：后续遇到新的异常场景时，从空白测试开始独立完成故障注入和断言。
