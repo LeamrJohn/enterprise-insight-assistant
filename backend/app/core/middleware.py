@@ -16,11 +16,10 @@ async def request_context_middleware(
 ) -> Response:
     incoming_request_id = request.headers.get("X-Request-ID", "")
     request_id = (
-        incoming_request_id
-        if 0 < len(incoming_request_id) <= 128
-        else uuid4().hex
+        incoming_request_id if 0 < len(incoming_request_id) <= 128 else uuid4().hex
     )
     token = request_id_context.set(request_id)
+    request.state.request_id = request_id
     start_time = time.perf_counter()
 
     try:
