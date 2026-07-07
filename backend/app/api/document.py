@@ -14,6 +14,17 @@ from app.services.document_service import (
 from app.core.auth import get_current_user
 from app.models.user import User
 
+from fastapi import UploadFile, File
+from app.services.document_ingestion_service import upload_document_service
+from app.core.settings import get_settings
+from app.core.exceptions import (
+    DuplicateDocumentError,
+    EmptyDocumentError,
+    UnsupportedDocumentTypeError,
+    DocumentTooLargeError,
+    InvalidDocumentNameError,
+)
+
 router = APIRouter()
 
 
@@ -50,8 +61,12 @@ def get_document_by_id(
 
 
 @router.delete("/documents/{document_id}", response_model=DocumentOut)
-def delete_document_by_id(document_id: int,current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    record = delete_document_service(db, document_id,user_id=current_user.id)
+def delete_document_by_id(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    record = delete_document_service(db, document_id, user_id=current_user.id)
 
     if record is None:
         raise HTTPException(status_code=404, detail="document not found")
@@ -79,3 +94,30 @@ def update_document_by_id(
         raise HTTPException(status_code=404, detail="document not found")
 
     return record
+
+
+@router.post("/documents/upload", response_model=DocumentOut)
+async def upload_document(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings()
+    try:
+        record = upload_document_service(
+            db=db,
+            user_id=current_user.id,
+            file_stream=file.file,
+            original_name=file.filename,
+            settings=settings,
+        )
+        return record
+    except DuplicateDocumentError:
+        raise HTTPException(status_code=409, detail="document already exists")
+    except (
+        EmptyDocumentError,
+        UnsupportedDocumentTypeError,
+        DocumentTooLargeError,
+        InvalidDocumentNameError,
+    ) as e:
+        raise HTTPException(status_code=422, detail=str(e))

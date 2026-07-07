@@ -57,6 +57,7 @@ def get_document_by_sha256(db: Session, sha256: str) -> Documents | None:
 def add_uploaded_document(
     db: Session,
     *,
+    user_id: int,
     name: str,
     file_path: str,
     file_type: str,
@@ -64,6 +65,7 @@ def add_uploaded_document(
     sha256: str,
 ) -> Documents:
     record = Documents(
+        user_id=user_id,
         name=name,
         content=None,
         source="upload",

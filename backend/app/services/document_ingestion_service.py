@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 def upload_document_service(
     db: Session,
     *,
+    user_id: int,
     file_stream: BinaryIO,
     original_name: str | None,
     settings: Settings,
@@ -30,6 +31,7 @@ def upload_document_service(
 
         record = add_uploaded_document(
             db=db,
+            user_id=user_id,
             name=stored_file.original_name,
             file_path=stored_file.relative_path,
             sha256=stored_file.sha256,
