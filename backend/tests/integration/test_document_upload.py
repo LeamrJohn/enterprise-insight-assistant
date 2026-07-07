@@ -13,7 +13,7 @@ def test_upload_text_file(client: TestClient) -> None:
     assert data["name"] == "test.txt"
     assert data["file_type"] == ".txt"
     assert data["source"] == "upload"
-    assert data["status"] == "pending"
+    assert data["status"] == "completed"
     assert data["sha256"] is not None
     assert data["file_size"] == len(content)
 

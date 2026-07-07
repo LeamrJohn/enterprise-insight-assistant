@@ -15,7 +15,7 @@ from app.core.auth import get_current_user
 from app.models.user import User
 
 from fastapi import UploadFile, File
-from app.services.document_ingestion_service import upload_document_service
+from app.services.document_ingestion_service import upload_document_service,process_document_chunks
 from app.core.settings import get_settings
 from app.core.exceptions import (
     DuplicateDocumentError,
@@ -113,6 +113,9 @@ async def upload_document(
             file_stream=file.file,
             original_name=file.filename,
             settings=settings,
+        )
+        record = process_document_chunks(
+            db=db, document=record, settings=settings
         )
         return record
     except DuplicateDocumentError:

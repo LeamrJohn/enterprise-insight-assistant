@@ -1,3 +1,7 @@
+from pathlib import Path
+from app.core import settings
+from app.repositories.chunk_repository import add_chunk
+from app.utils.document_chunk import chunk_file
 from typing import BinaryIO
 from sqlalchemy.orm import Session
 from app.core.settings import Settings
@@ -51,3 +55,29 @@ def upload_document_service(
         db.rollback()
         stored_file.absolute_path.unlink(missing_ok=True)
         raise
+
+
+def process_document_chunks(
+    db: Session,
+    document: Documents,
+    settings:  Settings,
+) -> Documents:
+    absolute_path = settings.storage_dir/ document.file_path
+    chunk_texts = chunk_file(absolute_path)
+
+    document.status = "processing"
+    db.flush()
+
+    for i, text in enumerate(chunk_texts):
+        add_chunk(
+            db=db,
+            document_id=document.id,
+            chunk_index=i,
+            content=text,
+            token_count=len(text.split()),
+        )
+    document.status = "completed"
+    document.content = "\n\n".join(chunk_texts)
+    db.commit()
+    db.refresh(document)
+    return document
