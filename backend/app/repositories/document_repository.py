@@ -17,12 +17,12 @@ def get_document(
     return db.query(Documents).order_by(Documents.id.desc()).all()
 
 
-def get_document_by_id(db: Session, document_id: int):
-    return db.query(Documents).filter(Documents.id == document_id).first()
+def get_document_by_id(db: Session, document_id: int,user_id:int):
+    return db.query(Documents).filter(Documents.id == document_id,Documents.user_id == user_id).first()
 
 
-def delete_document(db: Session, document_id: int):
-    record = db.query(Documents).filter(Documents.id == document_id).first()
+def delete_document(db: Session, document_id: int, user_id: int):
+    record = db.query(Documents).filter(Documents.id == document_id,Documents.user_id == user_id,).first()
 
     if record is None:
         return None
@@ -33,9 +33,9 @@ def delete_document(db: Session, document_id: int):
 
 
 def update_document(
-    db: Session, document_id: int, name: str, content: str, source: str
+    db: Session, document_id: int,user_id: int, name: str, content: str, source: str
 ):
-    record = db.query(Documents).filter(Documents.id == document_id).first()
+    record = db.query(Documents).filter(Documents.id == document_id,Documents.user_id == user_id,).first()
 
     if record is None:
         return None
