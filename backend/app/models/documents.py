@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String, Text, BigInteger, DateTime, CheckConstraint, false, func
+from sqlalchemy import ForeignKey, String, Text, BigInteger, DateTime, CheckConstraint,  func
 from app.db.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime

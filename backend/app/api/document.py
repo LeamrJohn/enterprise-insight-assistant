@@ -25,12 +25,12 @@ def get_document(db: Session = Depends(get_db)):
 @router.post("/documents", response_model=DocumentOut)
 def create_document(
     request_model: DocumentCreate,
-    current_user :User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return save_document_service(
         db=db,
-        user_id = current_user.id,
+        user_id=current_user.id,
         name=request_model.name,
         content=request_model.content,
         source=request_model.source,
@@ -38,16 +38,20 @@ def create_document(
 
 
 @router.get("/documents/{document_id}", response_model=DocumentOut)
-def get_document_by_id(document_id: int, db: Session = Depends(get_db)):
-    record = get_document_by_id_service(db, document_id)
+def get_document_by_id(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    record = get_document_by_id_service(db, document_id, user_id=current_user.id)
     if record is None:
         raise HTTPException(status_code=404, detail="document not found")
     return record
 
 
 @router.delete("/documents/{document_id}", response_model=DocumentOut)
-def delete_document_by_id(document_id: int, db: Session = Depends(get_db)):
-    record = delete_document_service(db, document_id)
+def delete_document_by_id(document_id: int,current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    record = delete_document_service(db, document_id,user_id=current_user.id)
 
     if record is None:
         raise HTTPException(status_code=404, detail="document not found")
@@ -59,11 +63,13 @@ def delete_document_by_id(document_id: int, db: Session = Depends(get_db)):
 def update_document_by_id(
     document_id: int,
     request_model: DocumentUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     record = update_document_service(
         db=db,
         document_id=document_id,
+        user_id=current_user.id,
         name=request_model.name,
         content=request_model.content,
         source=request_model.source,

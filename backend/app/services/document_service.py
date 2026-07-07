@@ -40,8 +40,8 @@ def get_document_service(db: Session) -> list[dict]:
     return result
 
 
-def get_document_by_id_service(db: Session, document_id: int):
-    record = get_document_by_id(db, document_id)
+def get_document_by_id_service(db: Session, document_id: int,user_id:int):
+    record = get_document_by_id(db, document_id,user_id=user_id)
 
     if record is None:
         return None
@@ -54,8 +54,8 @@ def get_document_by_id_service(db: Session, document_id: int):
     }
 
 
-def delete_document_service(db: Session, document_id: int):
-    record = delete_document(db, document_id)
+def delete_document_service(db: Session, document_id: int, user_id: int):
+    record = delete_document(db, document_id, user_id=user_id)
 
     if record is None:
         return None
@@ -70,6 +70,7 @@ def delete_document_service(db: Session, document_id: int):
 def update_document_service(
     db: Session,
     document_id: int,
+    user_id: int,
     name: str,
     content: str,
     source: str,
@@ -77,6 +78,7 @@ def update_document_service(
     record = update_document(
         db=db,
         document_id=document_id,
+        user_id=user_id,
         name=name,
         content=content,
         source=source,
