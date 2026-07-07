@@ -20,7 +20,11 @@ def test_unhandled_exception_returns_safe_500(monkeypatch: pytest.MonkeyPatch):
 
     assert response.status_code == 500
     assert response.headers.get("X-Request-ID")
-    assert response.json() == {"detail": "internal server error"}
+    assert response.json() == {
+        "code": "internal_error",
+        "message": "internal server error",
+        "details": [],
+    }
     assert "sensitive internal detail" not in response.text
 
 

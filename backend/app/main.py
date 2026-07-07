@@ -8,9 +8,12 @@ from sqlalchemy import text
 from app.api.router import router
 from app.core.logging import configure_logging
 from app.core.middleware import request_context_middleware
-from app.core.exceptions import unhandled_exception_handler
+from app.core.exceptions import unhandled_exception_handler,http_exception_handler
+from app.core.exceptions import request_validation_handler
 from app.core.settings import get_settings
 from app.db.session import engine
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.exceptions import RequestValidationError
 
 
 logger = logging.getLogger(__name__)
@@ -53,5 +56,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.middleware("http")(request_context_middleware)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler,)
+app.add_exception_handler(RequestValidationError, request_validation_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 app.include_router(router)

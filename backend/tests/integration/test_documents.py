@@ -39,8 +39,11 @@ def test_document_lifecycle(
     missing_response = client.get(f"/documents/{document_id}")
     assert missing_response.status_code == 404
     assert missing_response.headers["X-Request-ID"]
-    assert missing_response.json() == {"detail": "document not found"}
-
+    assert missing_response.json() == {
+        "code": "not_found",
+        "message": "document not found",
+        "details": [],
+    }
 
 def test_create_document_rejects_missing_content(client: TestClient) -> None:
     response = client.post(
@@ -53,10 +56,10 @@ def test_create_document_rejects_missing_content(client: TestClient) -> None:
     assert response.status_code == 422
     assert response.headers["X-Request-ID"]
 
-    detail = response.json()["detail"]
+    assert response.json()["code"] == "validation_error"
 
-    assert detail[0]["type"] == "missing"
-    assert detail[0]["loc"] == ["body", "content"]
+    assert response.json()["details"][0]["type"] == "missing"
+    assert response.json()["details"][0]["loc"] == ["body", "content"]
 
 
 @pytest.mark.parametrize("content", ["", "   "])
@@ -74,10 +77,10 @@ def test_create_document_rejects_blank_content(
     assert response.status_code == 422
     assert response.headers["X-Request-ID"]
 
-    detail = response.json()["detail"]
+    assert response.json()["code"] == "validation_error"
 
-    assert detail[0]["type"] == "string_too_short"
-    assert detail[0]["loc"] == ["body", "content"]
+    assert response.json()["details"][0]["type"] == "string_too_short"
+    assert response.json()["details"][0]["loc"] == ["body", "content"]
 
 
 @pytest.mark.parametrize("content", ["", "   "])
@@ -108,9 +111,9 @@ def test_update_document_rejects_blank_content(
     assert update_response.status_code == 422
     assert update_response.headers["X-Request-ID"]
 
-    detail = update_response.json()["detail"]
-    assert detail[0]["type"] == "string_too_short"
-    assert detail[0]["loc"] == ["body", "content"]
+    assert update_response.json()["code"] == "validation_error"
+    assert update_response.json()["details"][0]["type"] == "string_too_short"
+    assert update_response.json()["details"][0]["loc"] == ["body", "content"]
 
     get_response = client.get(f"/documents/{document_id}")
     assert get_response.status_code == 200

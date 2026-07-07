@@ -1,7 +1,8 @@
 from uuid import uuid4
 from fastapi import Request
 from fastapi.responses import JSONResponse
-
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.exceptions import RequestValidationError
 
 class DocumentUploadError(Exception):
     pass
@@ -38,6 +39,61 @@ async def unhandled_exception_handler(
     )
     return JSONResponse(
         status_code=500,
-        content={"detail": "internal server error"},
+        content={
+            "code": "internal_error",
+            "message": "internal server error",
+            "details": [],
+        },
+        headers={"X-Request-ID": request_id},
+    )
+
+async def http_exception_handler(
+        request :Request,
+        exc : StarletteHTTPException,
+) -> JSONResponse:
+    request_id = getattr(
+        request.state,
+        "request_id",
+        uuid4().hex,
+    )
+    code_by_status ={
+        404:"not_found",
+        503:"service_unavailable",
+    }
+    headers = dict(exc.headers or {})
+    headers ["X-Request-ID"] = request_id
+
+    return JSONResponse(
+        status_code= exc.status_code,
+        content={
+            "code": code_by_status.get(exc.status_code,"http_error"),
+            "message" : str(exc.detail),
+            "details": [],
+        },
+        headers = headers,
+    )
+
+
+async def request_validation_handler(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    request_id = getattr(
+        request.state,
+        "request_id",
+        uuid4().hex,
+    )
+    details = [
+        {"type": err["type"], "loc": err["loc"], "msg": err["msg"]}
+        for err in exc.errors()
+    ]
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "code": "validation_error",
+            "message": "request validation failed",
+            "details": details,
+        },
         headers={"X-Request-ID": request_id},
     )
