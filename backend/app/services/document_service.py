@@ -9,9 +9,10 @@ from app.repositories.document_repository import (
 )
 
 
-def save_document_service(db: Session, name: str, content: str, source: str) -> dict:
+def save_document_service(db: Session, user_id:int,name: str, content: str, source: str) -> dict:
     record = save_document(
         db=db,
+        user_id = user_id,
         name=name,
         content=content,
         source=source,

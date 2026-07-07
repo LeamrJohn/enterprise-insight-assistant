@@ -3,8 +3,8 @@ from app.models.documents import Documents
 from sqlalchemy import select
 
 
-def save_document(db: Session, name: str, content: str, source: str):
-    record = Documents(name=name, content=content, source=source)
+def save_document(db: Session, user_id:int,name: str, content: str, source: str):
+    record = Documents(user_id=user_id,name=name, content=content, source=source)
     db.add(record)
     db.commit()
     db.refresh(record)

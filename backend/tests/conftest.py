@@ -18,6 +18,8 @@ from sqlalchemy.orm import Session
 
 from app.db.session import engine, get_db
 from app.main import app
+from app.core.auth import get_current_user
+from app.models.user import User
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -54,13 +56,26 @@ def db_session(
 
 
 @pytest.fixture
+def test_user(db_session: Session) -> User:
+    user = User(name="test-user", api_key="test-api-key-for-testing")
+    db_session.add(user)
+    db_session.flush()
+    return user
+
+
+@pytest.fixture
 def client(
     db_session: Session,
+    test_user: User,
 ) -> Generator[TestClient, None, None]:
     def override_get_db() -> Generator[Session, None, None]:
         yield db_session
 
+    def override_get_current_user() -> User:
+        return test_user
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     try:
         with TestClient(app) as test_client:

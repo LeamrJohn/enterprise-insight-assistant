@@ -1,4 +1,4 @@
-from sqlalchemy import String, Text, BigInteger, DateTime, CheckConstraint, func
+from sqlalchemy import ForeignKey, String, Text, BigInteger, DateTime, CheckConstraint, false, func
 from app.db.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
@@ -15,6 +15,7 @@ class Documents(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id : Mapped[int] = mapped_column(ForeignKey("users.id"),nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     source: Mapped[str] = mapped_column(String(500), nullable=False)
