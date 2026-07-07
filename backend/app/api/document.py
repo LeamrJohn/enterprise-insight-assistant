@@ -11,6 +11,8 @@ from app.services.document_service import (
     delete_document_service,
     update_document_service,
 )
+from app.core.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -23,10 +25,12 @@ def get_document(db: Session = Depends(get_db)):
 @router.post("/documents", response_model=DocumentOut)
 def create_document(
     request_model: DocumentCreate,
+    current_user :User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return save_document_service(
         db=db,
+        user_id = current_user.id,
         name=request_model.name,
         content=request_model.content,
         source=request_model.source,
