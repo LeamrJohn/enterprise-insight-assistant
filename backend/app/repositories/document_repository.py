@@ -13,8 +13,11 @@ def save_document(db: Session, user_id:int,name: str, content: str, source: str)
 
 def get_document(
     db: Session,
+    user_id: int,
 ):
-    return db.query(Documents).order_by(Documents.id.desc()).all()
+    return db.query(Documents).filter(
+        Documents.user_id == user_id,
+    ).order_by(Documents.id.desc()).all()
 
 
 def get_document_by_id(db: Session, document_id: int,user_id:int):

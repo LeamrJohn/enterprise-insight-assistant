@@ -25,8 +25,8 @@ def save_document_service(db: Session, user_id:int,name: str, content: str, sour
     }
 
 
-def get_document_service(db: Session) -> list[dict]:
-    documents = get_document(db)
+def get_document_service(db: Session, user_id: int) -> list[dict]:
+    documents = get_document(db, user_id=user_id)
     result = []
     for document in documents:
         result.append(
