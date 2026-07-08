@@ -24,6 +24,8 @@ from app.core.exceptions import (
     DocumentTooLargeError,
     InvalidDocumentNameError,
 )
+from app.repositories.chunk_repository import get_chunks_by_document_id
+from app.schemas.chunk import ChunkOut
 
 router = APIRouter()
 
@@ -127,3 +129,14 @@ async def upload_document(
         InvalidDocumentNameError,
     ) as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+@router.get("/documents/{document_id}/chunks", response_model=list[ChunkOut])
+def get_document_chunks(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    record = get_document_by_id_service(db, document_id, user_id=current_user.id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    return get_chunks_by_document_id(db, document_id)

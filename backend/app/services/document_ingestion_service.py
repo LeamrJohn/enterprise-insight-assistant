@@ -1,5 +1,4 @@
 from pathlib import Path
-from app.core import settings
 from app.repositories.chunk_repository import add_chunk
 from app.utils.document_chunk import chunk_file
 from typing import BinaryIO
@@ -62,7 +61,8 @@ def process_document_chunks(
     document: Documents,
     settings:  Settings,
 ) -> Documents:
-    absolute_path = settings.storage_dir/ document.file_path
+    assert document.file_path is not None
+    absolute_path = settings.storage_dir / document.file_path
     chunk_texts = chunk_file(absolute_path)
 
     document.status = "processing"
