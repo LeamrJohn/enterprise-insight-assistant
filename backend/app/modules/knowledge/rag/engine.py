@@ -20,6 +20,8 @@ class EvidenceRef:
     page_number: int | None = None
     paragraph_start: int | None = None
     paragraph_end: int | None = None
+    chunk_strategy: str | None = None
+    retrieval_strategies: tuple[str, ...] = ()
 
 
 @dataclass
@@ -110,6 +112,4 @@ def check_sufficiency(
         evidence.rerank_score if evidence.rerank_score is not None else evidence.score
         for evidence in evidences
     ) / len(evidences)
-    if avg_score < min_avg_score:
-        return False
-    return True
+    return not avg_score < min_avg_score

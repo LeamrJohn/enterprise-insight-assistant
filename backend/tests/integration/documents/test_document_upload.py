@@ -1,7 +1,11 @@
-from fastapi.testclient import TestClient
 import pytest
-
 from app.modules.organizations.models import Company, CompanyMember
+from fastapi.testclient import TestClient
+
+
+@pytest.fixture
+def client(frozen_upload_client):
+    return frozen_upload_client
 
 
 @pytest.fixture(autouse=True)

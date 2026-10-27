@@ -2,27 +2,20 @@
 
 from typing import Any, cast
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
-
-from app.modules.organizations.access import (
-    CurrentCompanyContext,
-    get_current_company_context,
-    require_analysis_permission,
-)
 from app.core.exceptions import (
+    DocumentTooLargeError,
     DuplicateDocumentError,
     EmptyDocumentError,
+    InsufficientStorageError,
     InvalidDocumentNameError,
     UnsupportedDocumentTypeError,
-    DocumentTooLargeError,
 )
 from app.core.settings import get_settings
 from app.db.session import get_db
 from app.modules.documents.chunk_repository import get_chunks_by_document_id
 from app.modules.documents.chunk_schemas import ChunkOut
-from app.modules.documents.schemas import DocumentCreate, DocumentOut, DocumentUpdate
 from app.modules.documents.ingestion import upload_document_service
+from app.modules.documents.schemas import DocumentCreate, DocumentOut, DocumentUpdate
 from app.modules.documents.service import (
     delete_document_service,
     get_document_by_id_service,
@@ -31,8 +24,16 @@ from app.modules.documents.service import (
     update_document_service,
 )
 from app.modules.documents.tasks import process_document_task
+from app.modules.organizations.access import (
+    CurrentCompanyContext,
+    get_current_company_context,
+    require_analysis_permission,
+)
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy.orm import Session
 
 router = APIRouter()
+upload_router = APIRouter()  # Frozen: not mounted by the production application.
 
 
 @router.get("/documents", response_model=list[DocumentOut])
@@ -153,7 +154,7 @@ def update_document(
     return record
 
 
-@router.post(
+@upload_router.post(
     "/documents/upload",
     response_model=DocumentOut,
     status_code=status.HTTP_202_ACCEPTED,
@@ -179,6 +180,8 @@ async def upload_document(
         return record
     except DuplicateDocumentError:
         raise HTTPException(status_code=409, detail="document already exists")
+    except InsufficientStorageError:
+        raise HTTPException(status_code=507, detail="storage capacity exhausted")
     except (
         EmptyDocumentError,
         UnsupportedDocumentTypeError,
